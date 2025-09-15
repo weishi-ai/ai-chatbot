@@ -1,13 +1,14 @@
 'use server';
 
-import { generateText, type UIMessage } from 'ai';
+import { generateText, Message } from 'ai';
 import { cookies } from 'next/headers';
+
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
   updateChatVisiblityById,
 } from '@/lib/db/queries';
-import type { VisibilityType } from '@/components/visibility-selector';
+import { VisibilityType } from '@/components/visibility-selector';
 import { myProvider } from '@/lib/ai/providers';
 
 export async function saveChatModelAsCookie(model: string) {
@@ -18,8 +19,24 @@ export async function saveChatModelAsCookie(model: string) {
 export async function generateTitleFromUserMessage({
   message,
 }: {
-  message: UIMessage;
+  message: Message;
 }) {
+  // 提取文本内容用于生成标题
+  let textContent = '';
+  if (message.parts && Array.isArray(message.parts)) {
+    textContent = message.parts
+      .filter(part => part.type === 'text')
+      .map(part => part.text)
+      .join(' ');
+  }
+  
+  // 如果没有文本内容，使用默认标题
+  if (!textContent.trim()) {
+    textContent = (message.experimental_attachments && message.experimental_attachments.length > 0)
+      ? '图片分析' 
+      : '新对话';
+  }
+
   const { text: title } = await generateText({
     model: myProvider.languageModel('title-model'),
     system: `\n
@@ -27,7 +44,7 @@ export async function generateTitleFromUserMessage({
     - ensure it is not more than 80 characters long
     - the title should be a summary of the user's message
     - do not use quotes or colons`,
-    prompt: JSON.stringify(message),
+    prompt: textContent,
   });
 
   return title;

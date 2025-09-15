@@ -1,9 +1,8 @@
-import { TerminalWindowIcon, CrossSmallIcon } from './icons';
-import { Loader } from './elements/loader';
+import { TerminalWindowIcon, LoaderIcon, CrossSmallIcon } from './icons';
 import { Button } from './ui/button';
 import {
-  type Dispatch,
-  type SetStateAction,
+  Dispatch,
+  SetStateAction,
   useCallback,
   useEffect,
   useRef,
@@ -80,7 +79,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
   return consoleOutputs.length > 0 ? (
     <>
       <div
-        className="fixed z-50 h-2 w-full cursor-ns-resize"
+        className="h-2 w-full fixed cursor-ns-resize z-50"
         onMouseDown={startResizing}
         style={{ bottom: height - 4 }}
         role="slider"
@@ -89,15 +88,15 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
 
       <div
         className={cn(
-          'fixed bottom-0 z-40 flex w-full flex-col overflow-x-hidden overflow-y-scroll border-zinc-200 border-t bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900',
+          'fixed flex flex-col bottom-0 dark:bg-zinc-900 bg-zinc-50 w-full border-t z-40 overflow-y-scroll overflow-x-hidden dark:border-zinc-700 border-zinc-200',
           {
             'select-none': isResizing,
           },
         )}
         style={{ height }}
       >
-        <div className="sticky top-0 z-50 flex h-fit w-full flex-row items-center justify-between border-zinc-200 border-b bg-muted px-2 py-1 dark:border-zinc-700">
-          <div className="flex flex-row items-center gap-3 pl-2 text-sm text-zinc-800 dark:text-zinc-50">
+        <div className="flex flex-row justify-between items-center w-full h-fit border-b dark:border-zinc-700 border-zinc-200 px-2 py-1 sticky top-0 z-50 bg-muted">
+          <div className="text-sm pl-2 dark:text-zinc-50 text-zinc-800 flex flex-row gap-3 items-center">
             <div className="text-muted-foreground">
               <TerminalWindowIcon />
             </div>
@@ -105,7 +104,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
           </div>
           <Button
             variant="ghost"
-            className="size-fit p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            className="size-fit p-1 hover:dark:bg-zinc-700 hover:bg-zinc-200"
             size="icon"
             onClick={() => setConsoleOutputs([])}
           >
@@ -117,7 +116,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
           {consoleOutputs.map((consoleOutput, index) => (
             <div
               key={consoleOutput.id}
-              className="flex flex-row border-zinc-200 border-b bg-zinc-50 px-4 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              className="px-4 py-2 flex flex-row text-sm border-b dark:border-zinc-700 border-zinc-200 dark:bg-zinc-900 bg-zinc-50 font-mono"
             >
               <div
                 className={cn('w-12 shrink-0', {
@@ -135,8 +134,8 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
                 consoleOutput.status,
               ) ? (
                 <div className="flex flex-row gap-2">
-                  <div className="mt-0.5 mb-auto size-fit self-center">
-                    <Loader size={16} />
+                  <div className="animate-spin size-fit self-center mb-auto mt-0.5">
+                    <LoaderIcon />
                   </div>
                   <div className="text-muted-foreground">
                     {consoleOutput.status === 'in_progress'
@@ -149,20 +148,20 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
                   </div>
                 </div>
               ) : (
-                <div className="flex w-full flex-col gap-2 overflow-x-scroll text-zinc-900 dark:text-zinc-50">
+                <div className="dark:text-zinc-50 text-zinc-900 w-full flex flex-col gap-2 overflow-x-scroll">
                   {consoleOutput.contents.map((content, index) =>
                     content.type === 'image' ? (
                       <picture key={`${consoleOutput.id}-${index}`}>
                         <img
                           src={content.value}
                           alt="output"
-                          className="w-full max-w-(--breakpoint-toast-mobile) rounded-md"
+                          className="rounded-md max-w-screen-toast-mobile w-full"
                         />
                       </picture>
                     ) : (
                       <div
                         key={`${consoleOutput.id}-${index}`}
-                        className="w-full whitespace-pre-line break-words"
+                        className="whitespace-pre-line break-words w-full"
                       >
                         {content.value}
                       </div>

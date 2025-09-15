@@ -1,29 +1,57 @@
 'use client';
-import { motion } from 'framer-motion';
+
+import type { UIMessage } from 'ai';
+import cx from 'classnames';
+import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import type { Vote } from '@/lib/db/schema';
-import { DocumentToolResult } from './document';
-import { SparklesIcon } from './icons';
-import { Response } from './elements/response';
-import { MessageContent } from './elements/message';
-import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-} from './elements/tool';
+import { DocumentToolCall, DocumentToolResult } from './document';
+import { PencilEditIcon, SparklesIcon } from './icons';
+import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
 import { Weather } from './weather';
 import equal from 'fast-deep-equal';
-import { cn, sanitizeText } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { MessageEditor } from './message-editor';
 import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
-import type { UseChatHelpers } from '@ai-sdk/react';
-import type { ChatMessage } from '@/lib/types';
-import { useDataStream } from './data-stream-provider';
+import { UseChatHelpers } from '@ai-sdk/react';
+
+// 过滤图片识别内容，只显示用户原始输入
+function filterRecognitionContent(text: string): string {
+  // 如果文本包含图片识别相关的关键词，直接返回默认文本
+  const recognitionKeywords = [
+    '图片内容识别',
+    '图片内容：',
+    '文字内容：',
+    '物体：',
+    '场景：',
+    '详细描述：',
+    '**文字和符号**',
+    '**物体和场景**',
+    '求解步骤',
+    '求解过程',
+    '这张图片展示了',
+    '方程的内容是',
+    '方程中包含'
+  ];
+  
+  // 检查是否包含识别内容
+  const hasRecognitionContent = recognitionKeywords.some(keyword => 
+    text.includes(keyword)
+  );
+  
+  if (hasRecognitionContent) {
+    // 如果包含识别内容，只显示默认文本
+    return '回答';
+  }
+  
+  // 否则返回原文本
+  return text.trim() || '回答';
+}
 
 const PurePreviewMessage = ({
   chatId,
@@ -31,258 +59,207 @@ const PurePreviewMessage = ({
   vote,
   isLoading,
   setMessages,
-  regenerate,
+  reload,
   isReadonly,
-  requiresScrollPadding,
-  isArtifactVisible,
 }: {
   chatId: string;
-  message: ChatMessage;
+  message: UIMessage;
   vote: Vote | undefined;
   isLoading: boolean;
-  setMessages: UseChatHelpers<ChatMessage>['setMessages'];
-  regenerate: UseChatHelpers<ChatMessage>['regenerate'];
+  setMessages: UseChatHelpers['setMessages'];
+  reload: UseChatHelpers['reload'];
   isReadonly: boolean;
-  requiresScrollPadding: boolean;
-  isArtifactVisible: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
-  const attachmentsFromMessage = message.parts.filter(
-    (part) => part.type === 'file',
-  );
-
-  useDataStream();
-
   return (
-    <motion.div
-      data-testid={`message-${message.role}`}
-      className="group/message w-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      data-role={message.role}
-    >
-      <div
-        className={cn('flex w-full items-start gap-2 md:gap-3', {
-          'justify-end': message.role === 'user' && mode !== 'edit',
-          'justify-start': message.role === 'assistant',
-        })}
+    <AnimatePresence>
+      <motion.div
+        data-testid={`message-${message.role}`}
+        className="w-full mx-auto max-w-3xl px-4 group/message"
+        initial={{ y: 5, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        data-role={message.role}
       >
-        {message.role === 'assistant' && (
-          <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-            <SparklesIcon size={14} />
-          </div>
-        )}
-
         <div
-          className={cn('flex flex-col', {
-            'gap-2 md:gap-4': message.parts?.some(
-              (p) => p.type === 'text' && p.text?.trim(),
-            ),
-            'min-h-96': message.role === 'assistant' && requiresScrollPadding,
-            'w-full':
-              (message.role === 'assistant' &&
-                message.parts?.some(
-                  (p) => p.type === 'text' && p.text?.trim(),
-                )) ||
-              mode === 'edit',
-            'max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]':
-              message.role === 'user' && mode !== 'edit',
-          })}
+          className={cn(
+            'flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl',
+            {
+              'w-full': mode === 'edit',
+              'group-data-[role=user]/message:w-fit': mode !== 'edit',
+            },
+          )}
         >
-          {attachmentsFromMessage.length > 0 && (
-            <div
-              data-testid={`message-attachments`}
-              className="flex flex-row justify-end gap-2"
-            >
-              {attachmentsFromMessage.map((attachment) => (
-                <PreviewAttachment
-                  key={attachment.url}
-                  attachment={{
-                    name: attachment.filename ?? 'file',
-                    contentType: attachment.mediaType,
-                    url: attachment.url,
-                  }}
-                />
-              ))}
+          {message.role === 'assistant' && (
+            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+              <div className="translate-y-px">
+                <SparklesIcon size={14} />
+              </div>
             </div>
           )}
 
-          {message.parts?.map((part, index) => {
-            const { type } = part;
-            const key = `message-${message.id}-part-${index}`;
+          <div className="flex flex-col gap-4 w-full">
+            {message.experimental_attachments && (
+              <div
+                data-testid={`message-attachments`}
+                className="flex flex-row justify-end gap-2"
+              >
+                {message.experimental_attachments.map((attachment) => (
+                  <PreviewAttachment
+                    key={attachment.url}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
+            )}
 
-            if (type === 'reasoning' && part.text?.trim().length > 0) {
-              return (
-                <MessageReasoning
-                  key={key}
-                  isLoading={isLoading}
-                  reasoning={part.text}
-                />
-              );
-            }
+            {message.parts?.map((part, index) => {
+              const { type } = part;
+              const key = `message-${message.id}-part-${index}`;
 
-            if (type === 'text') {
-              if (mode === 'view') {
+              if (type === 'reasoning') {
                 return (
-                  <div key={key}>
-                    <MessageContent
-                      data-testid="message-content"
-                      className={cn({
-                        'w-fit break-words rounded-2xl px-3 py-2 text-right text-white':
-                          message.role === 'user',
-                        'bg-transparent px-0 py-0 text-left':
-                          message.role === 'assistant',
-                      })}
-                      style={
-                        message.role === 'user'
-                          ? { backgroundColor: '#006cff' }
-                          : undefined
-                      }
-                    >
-                      <Response>{sanitizeText(part.text)}</Response>
-                    </MessageContent>
-                  </div>
+                  <MessageReasoning
+                    key={key}
+                    isLoading={isLoading}
+                    reasoning={part.reasoning}
+                  />
                 );
               }
 
-              if (mode === 'edit') {
-                return (
-                  <div
-                    key={key}
-                    className="flex w-full flex-row items-start gap-3"
-                  >
-                    <div className="size-8" />
-                    <div className="min-w-0 flex-1">
+              if (type === 'text') {
+                if (mode === 'view') {
+                  return (
+                    <div key={key} className="flex flex-row gap-2 items-start">
+                      {message.role === 'user' && !isReadonly && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-testid="message-edit-button"
+                              variant="ghost"
+                              className="px-2 h-fit rounded-full text-muted-foreground opacity-0 group-hover/message:opacity-100"
+                              onClick={() => {
+                                setMode('edit');
+                              }}
+                            >
+                              <PencilEditIcon />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit message</TooltipContent>
+                        </Tooltip>
+                      )}
+
+                      <div
+                        data-testid="message-content"
+                        className={cn('flex flex-col gap-4', {
+                          'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
+                            message.role === 'user',
+                        })}
+                      >
+                        <Markdown>{message.role === 'user' ? filterRecognitionContent(part.text) : part.text}</Markdown>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (mode === 'edit') {
+                  return (
+                    <div key={key} className="flex flex-row gap-2 items-start">
+                      <div className="size-8" />
+
                       <MessageEditor
                         key={message.id}
                         message={message}
                         setMode={setMode}
                         setMessages={setMessages}
-                        regenerate={regenerate}
+                        reload={reload}
                       />
                     </div>
-                  </div>
-                );
-              }
-            }
-
-            if (type === 'tool-getWeather') {
-              const { toolCallId, state } = part;
-
-              return (
-                <Tool key={toolCallId} defaultOpen={true}>
-                  <ToolHeader type="tool-getWeather" state={state} />
-                  <ToolContent>
-                    {state === 'input-available' && (
-                      <ToolInput input={part.input} />
-                    )}
-                    {state === 'output-available' && (
-                      <ToolOutput
-                        output={<Weather weatherAtLocation={part.output} />}
-                        errorText={undefined}
-                      />
-                    )}
-                  </ToolContent>
-                </Tool>
-              );
-            }
-
-            if (type === 'tool-createDocument') {
-              const { toolCallId } = part;
-
-              if (part.output && 'error' in part.output) {
-                return (
-                  <div
-                    key={toolCallId}
-                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-                  >
-                    Error creating document: {String(part.output.error)}
-                  </div>
-                );
+                  );
+                }
               }
 
-              return (
-                <DocumentPreview
-                  key={toolCallId}
-                  isReadonly={isReadonly}
-                  result={part.output}
-                />
-              );
-            }
+              if (type === 'tool-invocation') {
+                const { toolInvocation } = part;
+                const { toolName, toolCallId, state } = toolInvocation;
 
-            if (type === 'tool-updateDocument') {
-              const { toolCallId } = part;
+                if (state === 'call') {
+                  const { args } = toolInvocation;
 
-              if (part.output && 'error' in part.output) {
-                return (
-                  <div
-                    key={toolCallId}
-                    className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 dark:bg-red-950/50"
-                  >
-                    Error updating document: {String(part.output.error)}
-                  </div>
-                );
+                  return (
+                    <div
+                      key={toolCallId}
+                      className={cx({
+                        skeleton: ['getWeather'].includes(toolName),
+                      })}
+                    >
+                      {toolName === 'getWeather' ? (
+                        <Weather />
+                      ) : toolName === 'createDocument' ? (
+                        <DocumentPreview isReadonly={isReadonly} args={args} />
+                      ) : toolName === 'updateDocument' ? (
+                        <DocumentToolCall
+                          type="update"
+                          args={args}
+                          isReadonly={isReadonly}
+                        />
+                      ) : toolName === 'requestSuggestions' ? (
+                        <DocumentToolCall
+                          type="request-suggestions"
+                          args={args}
+                          isReadonly={isReadonly}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                }
+
+                if (state === 'result') {
+                  const { result } = toolInvocation;
+
+                  return (
+                    <div key={toolCallId}>
+                      {toolName === 'getWeather' ? (
+                        <Weather weatherAtLocation={result} />
+                      ) : toolName === 'createDocument' ? (
+                        <DocumentPreview
+                          isReadonly={isReadonly}
+                          result={result}
+                        />
+                      ) : toolName === 'updateDocument' ? (
+                        <DocumentToolResult
+                          type="update"
+                          result={result}
+                          isReadonly={isReadonly}
+                        />
+                      ) : toolName === 'requestSuggestions' ? (
+                        <DocumentToolResult
+                          type="request-suggestions"
+                          result={result}
+                          isReadonly={isReadonly}
+                        />
+                      ) : (
+                        <pre>{JSON.stringify(result, null, 2)}</pre>
+                      )}
+                    </div>
+                  );
+                }
               }
+            })}
 
-              return (
-                <div key={toolCallId} className="relative">
-                  <DocumentPreview
-                    isReadonly={isReadonly}
-                    result={part.output}
-                    args={{ ...part.output, isUpdate: true }}
-                  />
-                </div>
-              );
-            }
-
-            if (type === 'tool-requestSuggestions') {
-              const { toolCallId, state } = part;
-
-              return (
-                <Tool key={toolCallId} defaultOpen={true}>
-                  <ToolHeader type="tool-requestSuggestions" state={state} />
-                  <ToolContent>
-                    {state === 'input-available' && (
-                      <ToolInput input={part.input} />
-                    )}
-                    {state === 'output-available' && (
-                      <ToolOutput
-                        output={
-                          'error' in part.output ? (
-                            <div className="rounded border p-2 text-red-500">
-                              Error: {String(part.output.error)}
-                            </div>
-                          ) : (
-                            <DocumentToolResult
-                              type="request-suggestions"
-                              result={part.output}
-                              isReadonly={isReadonly}
-                            />
-                          )
-                        }
-                        errorText={undefined}
-                      />
-                    )}
-                  </ToolContent>
-                </Tool>
-              );
-            }
-          })}
-
-          {!isReadonly && (
-            <MessageActions
-              key={`action-${message.id}`}
-              chatId={chatId}
-              message={message}
-              vote={vote}
-              isLoading={isLoading}
-              setMode={setMode}
-            />
-          )}
+            {!isReadonly && (
+              <MessageActions
+                key={`action-${message.id}`}
+                chatId={chatId}
+                message={message}
+                vote={vote}
+                isLoading={isLoading}
+              />
+            )}
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -291,12 +268,10 @@ export const PreviewMessage = memo(
   (prevProps, nextProps) => {
     if (prevProps.isLoading !== nextProps.isLoading) return false;
     if (prevProps.message.id !== nextProps.message.id) return false;
-    if (prevProps.requiresScrollPadding !== nextProps.requiresScrollPadding)
-      return false;
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
     if (!equal(prevProps.vote, nextProps.vote)) return false;
 
-    return false;
+    return true;
   },
 );
 
@@ -306,45 +281,29 @@ export const ThinkingMessage = () => {
   return (
     <motion.div
       data-testid="message-assistant-loading"
-      className="group/message w-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      className="w-full mx-auto max-w-3xl px-4 group/message "
+      initial={{ y: 5, opacity: 0 }}
+      animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
       data-role={role}
     >
-      <div className="flex items-start justify-start gap-3">
-        <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
+      <div
+        className={cx(
+          'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
+          {
+            'group-data-[role=user]/message:bg-muted': true,
+          },
+        )}
+      >
+        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
           <SparklesIcon size={14} />
         </div>
 
-        <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className='p-0 text-muted-foreground text-sm'>
-            <LoadingText>Thinking...</LoadingText>
+        <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-col gap-4 text-muted-foreground">
+            Hmm...
           </div>
         </div>
       </div>
-    </motion.div>
-  );
-};
-
-const LoadingText = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <motion.div
-      animate={{ backgroundPosition: ['100% 50%', '-100% 50%'] }}
-      transition={{
-        duration: 1.5,
-        repeat: Number.POSITIVE_INFINITY,
-        ease: 'linear',
-      }}
-      style={{
-        background:
-          'linear-gradient(90deg, hsl(var(--muted-foreground)) 0%, hsl(var(--muted-foreground)) 35%, hsl(var(--foreground)) 50%, hsl(var(--muted-foreground)) 65%, hsl(var(--muted-foreground)) 100%)',
-        backgroundSize: '200% 100%',
-        WebkitBackgroundClip: 'text',
-        backgroundClip: 'text',
-      }}
-      className="flex items-center text-transparent"
-    >
-      {children}
     </motion.div>
   );
 };

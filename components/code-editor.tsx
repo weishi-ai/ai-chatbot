@@ -6,7 +6,7 @@ import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { basicSetup } from 'codemirror';
 import React, { memo, useEffect, useRef } from 'react';
-import type { Suggestion } from '@/lib/db/schema';
+import { Suggestion } from '@/lib/db/schema';
 
 type EditorProps = {
   content: string;
@@ -92,7 +92,7 @@ function PureCodeEditor({ content, onSaveContent, status }: EditorProps) {
 
   return (
     <div
-      className="not-prose relative w-full pb-[calc(80dvh)] text-sm"
+      className="relative not-prose w-full pb-[calc(80dvh)] text-sm"
       ref={containerRef}
     />
   );

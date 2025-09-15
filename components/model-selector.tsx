@@ -14,34 +14,20 @@ import { chatModels } from '@/lib/ai/models';
 import { cn } from '@/lib/utils';
 
 import { CheckCircleFillIcon, ChevronDownIcon } from './icons';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
-import type { Session } from 'next-auth';
 
 export function ModelSelector({
-  session,
   selectedModelId,
   className,
 }: {
-  session: Session;
   selectedModelId: string;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
   const [optimisticModelId, setOptimisticModelId] =
     useOptimistic(selectedModelId);
 
-  const userType = session.user.type;
-  const { availableChatModelIds } = entitlementsByUserType[userType];
-
-  const availableChatModels = chatModels.filter((chatModel) =>
-    availableChatModelIds.includes(chatModel.id),
-  );
-
   const selectedChatModel = useMemo(
-    () =>
-      availableChatModels.find(
-        (chatModel) => chatModel.id === optimisticModelId,
-      ),
-    [optimisticModelId, availableChatModels],
+    () => chatModels.find((chatModel) => chatModel.id === optimisticModelId),
+    [optimisticModelId],
   );
 
   return (
@@ -56,14 +42,14 @@ export function ModelSelector({
         <Button
           data-testid="model-selector"
           variant="outline"
-          className="md:h-[34px] md:px-2"
+          className="md:px-2 md:h-[34px]"
         >
           {selectedChatModel?.name}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[280px] max-w-[90vw] sm:min-w-[300px]">
-        {availableChatModels.map((chatModel) => {
+      <DropdownMenuContent align="start" className="min-w-[300px]">
+        {chatModels.map((chatModel) => {
           const { id } = chatModel;
 
           return (
@@ -83,16 +69,16 @@ export function ModelSelector({
             >
               <button
                 type="button"
-                className="group/item flex w-full flex-row items-center justify-between gap-2 sm:gap-4"
+                className="gap-4 group/item flex flex-row justify-between items-center w-full"
               >
-                <div className="flex flex-col items-start gap-1">
-                  <div className="text-sm sm:text-base">{chatModel.name}</div>
-                  <div className='line-clamp-2 text-muted-foreground text-xs'>
+                <div className="flex flex-col gap-1 items-start">
+                  <div>{chatModel.name}</div>
+                  <div className="text-xs text-muted-foreground">
                     {chatModel.description}
                   </div>
                 </div>
 
-                <div className='shrink-0 text-foreground opacity-0 group-data-[active=true]/item:opacity-100 dark:text-foreground'>
+                <div className="text-foreground dark:text-foreground opacity-0 group-data-[active=true]/item:opacity-100">
                   <CheckCircleFillIcon />
                 </div>
               </button>

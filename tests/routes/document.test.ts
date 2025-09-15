@@ -1,7 +1,6 @@
 import type { Document } from '@/lib/db/schema';
 import { generateUUID } from '@/lib/utils';
 import { expect, test } from '../fixtures';
-import { getMessageByErrorCode } from '@/lib/errors';
 
 const documentsCreatedByAda: Array<Document> = [];
 
@@ -13,9 +12,8 @@ test.describe
       const response = await adaContext.request.get('/api/document');
       expect(response.status()).toBe(400);
 
-      const { code, message } = await response.json();
-      expect(code).toEqual('bad_request:api');
-      expect(message).toEqual(getMessageByErrorCode(code));
+      const text = await response.text();
+      expect(text).toEqual('Missing id');
     });
 
     test('Ada cannot retrieve a document that does not exist', async ({
@@ -28,9 +26,8 @@ test.describe
       );
       expect(response.status()).toBe(404);
 
-      const { code, message } = await response.json();
-      expect(code).toEqual('not_found:document');
-      expect(message).toEqual(getMessageByErrorCode(code));
+      const text = await response.text();
+      expect(text).toEqual('Not found');
     });
 
     test('Ada can create a document', async ({ adaContext }) => {
@@ -121,9 +118,8 @@ test.describe
       const response = await adaContext.request.delete(`/api/document`);
       expect(response.status()).toBe(400);
 
-      const { code, message } = await response.json();
-      expect(code).toEqual('bad_request:api');
-      expect(message).toEqual(getMessageByErrorCode(code));
+      const text = await response.text();
+      expect(text).toEqual('Missing id');
     });
 
     test('Ada cannot delete a document without specifying a timestamp', async ({
@@ -136,9 +132,8 @@ test.describe
       );
       expect(response.status()).toBe(400);
 
-      const { code, message } = await response.json();
-      expect(code).toEqual('bad_request:api');
-      expect(message).toEqual(getMessageByErrorCode(code));
+      const text = await response.text();
+      expect(text).toEqual('Missing timestamp');
     });
 
     test('Ada can delete a document by specifying id and timestamp', async ({
@@ -192,9 +187,8 @@ test.describe
       );
       expect(response.status()).toBe(403);
 
-      const { code, message } = await response.json();
-      expect(code).toEqual('forbidden:document');
-      expect(message).toEqual(getMessageByErrorCode(code));
+      const text = await response.text();
+      expect(text).toEqual('Forbidden');
     });
 
     test("Ada's documents did not get updated", async ({ adaContext }) => {

@@ -1,52 +1,33 @@
-import type {
-  CoreAssistantMessage,
-  CoreToolMessage,
-  UIMessage,
-  UIMessagePart,
-} from 'ai';
+import type { CoreAssistantMessage, CoreToolMessage, UIMessage } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { DBMessage, Document } from '@/lib/db/schema';
-import { ChatSDKError, type ErrorCode } from './errors';
-import type { ChatMessage, ChatTools, CustomUIDataTypes } from './types';
-import { formatISO } from 'date-fns';
+import type { Document } from '@/lib/db/schema';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+interface ApplicationError extends Error {
+  info: string;
+  status: number;
+}
+
 export const fetcher = async (url: string) => {
-  const response = await fetch(url);
+  const res = await fetch(url);
 
-  if (!response.ok) {
-    const { code, cause } = await response.json();
-    throw new ChatSDKError(code as ErrorCode, cause);
-  }
+  if (!res.ok) {
+    const error = new Error(
+      'An error occurred while fetching the data.',
+    ) as ApplicationError;
 
-  return response.json();
-};
-
-export async function fetchWithErrorHandlers(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) {
-  try {
-    const response = await fetch(input, init);
-
-    if (!response.ok) {
-      const { code, cause } = await response.json();
-      throw new ChatSDKError(code as ErrorCode, cause);
-    }
-
-    return response;
-  } catch (error: unknown) {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      throw new ChatSDKError('offline:chat');
-    }
+    error.info = await res.json();
+    error.status = res.status;
 
     throw error;
   }
-}
+
+  return res.json();
+};
 
 export function getLocalStorage(key: string) {
   if (typeof window !== 'undefined') {
@@ -91,26 +72,4 @@ export function getTrailingMessageId({
   if (!trailingMessage) return null;
 
   return trailingMessage.id;
-}
-
-export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
-}
-
-export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
-  return messages.map((message) => ({
-    id: message.id,
-    role: message.role as 'user' | 'assistant' | 'system',
-    parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
-    metadata: {
-      createdAt: formatISO(message.createdAt),
-    },
-  }));
-}
-
-export function getTextFromMessage(message: ChatMessage): string {
-  return message.parts
-    .filter((part) => part.type === 'text')
-    .map((part) => part.text)
-    .join('');
 }

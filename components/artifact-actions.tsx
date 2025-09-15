@@ -1,8 +1,8 @@
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { artifactDefinitions, type UIArtifact } from './artifact';
-import { type Dispatch, memo, type SetStateAction, useState } from 'react';
-import type { ArtifactActionContext } from './create-artifact';
+import { artifactDefinitions, UIArtifact } from './artifact';
+import { Dispatch, memo, SetStateAction, useState } from 'react';
+import { ArtifactActionContext } from './create-artifact';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -54,7 +54,7 @@ function PureArtifactActions({
               variant="outline"
               className={cn('h-fit dark:hover:bg-zinc-700', {
                 'p-2': !action.label,
-                'px-2 py-1.5': action.label,
+                'py-1.5 px-2': action.label,
               })}
               onClick={async () => {
                 setIsLoading(true);

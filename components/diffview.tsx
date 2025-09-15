@@ -11,7 +11,7 @@ import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import React, { useEffect, useRef } from 'react';
 import { renderToString } from 'react-dom/server';
-import { Streamdown } from 'streamdown';
+import ReactMarkdown from 'react-markdown';
 
 import { diffEditor, DiffType } from '@/lib/editor/diff';
 
@@ -60,10 +60,10 @@ export const DiffView = ({ oldContent, newContent }: DiffEditorProps) => {
       const parser = DOMParser.fromSchema(diffSchema);
 
       const oldHtmlContent = renderToString(
-        <Streamdown>{oldContent}</Streamdown>,
+        <ReactMarkdown>{oldContent}</ReactMarkdown>,
       );
       const newHtmlContent = renderToString(
-        <Streamdown>{newContent}</Streamdown>,
+        <ReactMarkdown>{newContent}</ReactMarkdown>,
       );
 
       const oldContainer = document.createElement('div');

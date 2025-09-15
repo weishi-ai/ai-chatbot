@@ -1,22 +1,18 @@
 import { auth } from '@/app/(auth)/auth';
 import { getSuggestionsByDocumentId } from '@/lib/db/queries';
-import { ChatSDKError } from '@/lib/errors';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const documentId = searchParams.get('documentId');
 
   if (!documentId) {
-    return new ChatSDKError(
-      'bad_request:api',
-      'Parameter documentId is required.',
-    ).toResponse();
+    return new Response('Not Found', { status: 404 });
   }
 
   const session = await auth();
 
-  if (!session?.user) {
-    return new ChatSDKError('unauthorized:suggestions').toResponse();
+  if (!session || !session.user) {
+    return new Response('Unauthorized', { status: 401 });
   }
 
   const suggestions = await getSuggestionsByDocumentId({
@@ -30,7 +26,7 @@ export async function GET(request: Request) {
   }
 
   if (suggestion.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:api').toResponse();
+    return new Response('Unauthorized', { status: 401 });
   }
 
   return Response.json(suggestions, { status: 200 });

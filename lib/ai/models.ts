@@ -1,6 +1,6 @@
 export const DEFAULT_CHAT_MODEL: string = 'chat-model';
 
-export interface ChatModel {
+interface ChatModel {
   id: string;
   name: string;
   description: string;
@@ -9,13 +9,17 @@ export interface ChatModel {
 export const chatModels: Array<ChatModel> = [
   {
     id: 'chat-model',
-    name: 'Grok Vision',
-    description: 'Advanced multimodal model with vision and text capabilities',
+    name: 'Chat model',
+    description: 'Primary model for all-purpose chat',
   },
   {
     id: 'chat-model-reasoning',
-    name: 'Grok Reasoning',
-    description:
-      'Uses advanced chain-of-thought reasoning for complex problems',
+    name: 'Reasoning model',
+    description: 'Uses advanced reasoning',
+  },
+  {
+    id: 'doubao-model',
+    name: 'Doubao model',
+    description: 'Doubao 1.5 Pro 256K model for advanced chat',
   },
 ];

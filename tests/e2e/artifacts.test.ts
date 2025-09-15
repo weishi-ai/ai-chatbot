@@ -1,8 +1,8 @@
-import { expect, test } from '../fixtures';
+import { expect, test } from '@playwright/test';
 import { ChatPage } from '../pages/chat';
 import { ArtifactPage } from '../pages/artifact';
 
-test.describe('Artifacts activity', () => {
+test.describe('artifacts activity', () => {
   let chatPage: ChatPage;
   let artifactPage: ArtifactPage;
 
@@ -13,8 +13,7 @@ test.describe('Artifacts activity', () => {
     await chatPage.createNewChat();
   });
 
-  test('Create a text artifact', async () => {
-    test.fixme();
+  test('create a text artifact', async () => {
     await chatPage.createNewChat();
 
     await chatPage.sendUserMessage(
@@ -32,8 +31,7 @@ test.describe('Artifacts activity', () => {
     await chatPage.hasChatIdInUrl();
   });
 
-  test('Toggle artifact visibility', async () => {
-    test.fixme();
+  test('toggle artifact visibility', async () => {
     await chatPage.createNewChat();
 
     await chatPage.sendUserMessage(
@@ -52,8 +50,7 @@ test.describe('Artifacts activity', () => {
     await chatPage.isElementNotVisible('artifact');
   });
 
-  test('Send follow up message after generation', async () => {
-    test.fixme();
+  test('send follow up message after generation', async () => {
     await chatPage.createNewChat();
 
     await chatPage.sendUserMessage(
