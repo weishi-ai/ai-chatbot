@@ -1,32 +1,59 @@
 import { LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Prompt, LanguageModelV1StreamPart } from "ai";
 
-// Doubao 模型实现 - 纯文本处理，但包含图片识别内容
-function convertPromptToMessages(prompt: LanguageModelV1Prompt): Array<{role: string, content: string}> {
+// Doubao 模型实现 - 支持多模态内容（文本和图片）
+function convertPromptToMessages(prompt: LanguageModelV1Prompt): Array<{role: string, content: any}> {
   return prompt.map((message) => {
     if (message.role === 'user' || message.role === 'assistant') {
-      const content = message.content
-        .map((content) => {
+      // 检查是否包含图片内容
+      const hasImage = message.content.some(content => content.type === 'image');
+      
+      if (hasImage) {
+        // 如果包含图片，使用多模态格式
+        const content = message.content.map((content) => {
           if (content.type === 'text') {
-            return content.text;
+            return {
+              type: 'text',
+              text: content.text
+            };
           } else if (content.type === 'image') {
-            return '';
+            return {
+              type: 'image_url',
+              image_url: { url: content.image }
+            };
           }
-          return '';
-        })
-        .filter(text => text.trim() !== '')
-        .join(' ');
-      return { role: message.role, content };
+          return null;
+        }).filter(item => item !== null);
+        
+        return { role: message.role, content };
+      } else {
+        // 纯文本内容，保持原有格式
+        const textContent = message.content
+          .map((content) => {
+            if (content.type === 'text') {
+              return content.text;
+            }
+            return '';
+          })
+          .filter(text => text.trim() !== '')
+          .join(' ');
+        return { role: message.role, content: textContent };
+      }
     } else if (message.role === 'system') {
       return { role: 'system', content: message.content };
     }
     return { role: 'user', content: '' };
-  }).filter(msg => msg.content.trim() !== '');
+  }).filter(msg => {
+    if (typeof msg.content === 'string') {
+      return msg.content.trim() !== '';
+    }
+    return Array.isArray(msg.content) && msg.content.length > 0;
+  });
 }
 
 export const doubaoModel: LanguageModelV1 = {
   specificationVersion: 'v1',
   provider: 'doubao',
-  modelId: 'doubao-1-5-pro-256k-250115',
+  modelId: 'doubao-1.5-vision-pro-250328',
   defaultObjectGenerationMode: 'json',
 
   async doGenerate(options: LanguageModelV1CallOptions) {
@@ -51,7 +78,7 @@ export const doubaoModel: LanguageModelV1 = {
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: 'doubao-1-5-pro-256k-250115',
+          model: 'doubao-1.5-vision-pro-250328',
           messages: messages,
           stream: false
         })
@@ -76,7 +103,7 @@ export const doubaoModel: LanguageModelV1 = {
         },
         request: {
           body: JSON.stringify({
-            model: 'doubao-1-5-pro-256k-250115',
+            model: 'doubao-1.5-vision-pro-250328',
             messages: messages,
             stream: false
           }),
@@ -118,7 +145,7 @@ export const doubaoModel: LanguageModelV1 = {
               'Authorization': 'Bearer ' + apiKey
             },
             body: JSON.stringify({
-              model: 'doubao-1-5-pro-256k-250115',
+              model: 'doubao-1.5-vision-pro-250328',
               messages: messages,
               stream: true
             })
@@ -191,7 +218,7 @@ export const doubaoModel: LanguageModelV1 = {
       },
       request: {
         body: JSON.stringify({
-          model: 'doubao-1-5-pro-256k-250115',
+          model: 'doubao-1.5-vision-pro-250328',
           messages: messages,
           stream: true
         }),

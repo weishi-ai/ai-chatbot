@@ -102,46 +102,14 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
-  const [recognizedTexts, setRecognizedTexts] = useState<Array<string>>([]);
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
-
-    // 调试：输出当前状态
-    console.log('提交时的状态:', {
-      input,
-      recognizedTexts,
-      attachments: attachments.length
-    });
-
-    // 如果有识别的文本，将其添加到输入内容中
-    let finalInput = input;
-    if (recognizedTexts.length > 0) {
-      const recognizedContent = recognizedTexts
-        .filter(text => text.trim() !== '')
-        .map(text => `[图片内容识别]: ${text}`)
-        .join('\n\n');
-      
-      console.log('识别内容:', recognizedContent);
-      
-      if (recognizedContent) {
-        finalInput = input.trim() 
-          ? `${input}\n\n${recognizedContent}`
-          : recognizedContent;
-      }
-    } else {
-      console.log('没有识别的文本内容，recognizedTexts为空');
-    }
-
-    console.log('最终输入内容:', finalInput);
-
-    // 发送完整内容给AI（包含图片识别内容）
-    console.log('发送给AI的完整内容:', finalInput);
     
     append(
       {
         role: 'user',
-        content: finalInput,
+        content: input,
         experimental_attachments: attachments,
       },
       {
@@ -151,7 +119,7 @@ function PureMultimodalInput({
 
     // 清理状态
     setAttachments([]);
-    setRecognizedTexts([]);
+    setInput('');
     setLocalStorageInput('');
     resetHeight();
 
@@ -162,12 +130,12 @@ function PureMultimodalInput({
     attachments,
     handleSubmit,
     setAttachments,
+    setInput,
     setLocalStorageInput,
     width,
     chatId,
     input,
-    recognizedTexts,
-    setInput,
+    append,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -182,25 +150,12 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType, recognizedText } = data;
-
-        // 如果有识别的文本内容，保存到隐藏状态中
-        if (recognizedText && recognizedText.trim() !== '') {
-          console.log('保存识别文本:', recognizedText);
-          setRecognizedTexts(prev => {
-            const newTexts = [...prev, recognizedText];
-            console.log('更新后的recognizedTexts:', newTexts);
-            return newTexts;
-          });
-        } else {
-          console.log('没有识别文本或文本为空:', recognizedText);
-        }
+        const { url, pathname, contentType } = data;
 
         return {
           url,
           name: pathname,
           contentType: contentType,
-          recognizedText, // 保存识别结果
         };
       }
       const { error } = await response.json();
@@ -253,38 +208,28 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0 || recognizedTexts.length > 0) && (
+      {(attachments.length > 0 || uploadQueue.length > 0) && (
         <div className="flex flex-col gap-2">
-          {/* 图片预览 */}
-          {(attachments.length > 0 || uploadQueue.length > 0) && (
-            <div
-              data-testid="attachments-preview"
-              className="flex flex-row gap-2 overflow-x-scroll items-end"
-            >
-              {attachments.map((attachment) => (
-                <PreviewAttachment key={attachment.url} attachment={attachment} />
-              ))}
+          <div
+            data-testid="attachments-preview"
+            className="flex flex-row gap-2 overflow-x-scroll items-end"
+          >
+            {attachments.map((attachment) => (
+              <PreviewAttachment key={attachment.url} attachment={attachment} />
+            ))}
 
-              {uploadQueue.map((filename) => (
-                <PreviewAttachment
-                  key={filename}
-                  attachment={{
-                    url: '',
-                    name: filename,
-                    contentType: '',
-                  }}
-                  isUploading={true}
-                />
-              ))}
-            </div>
-          )}
-          
-          {/* 识别状态提示 */}
-          {recognizedTexts.length > 0 && (
-            <div className="text-xs text-zinc-500 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-md">
-              📷 已识别 {recognizedTexts.length} 张图片内容，将在发送时自动包含
-            </div>
-          )}
+            {uploadQueue.map((filename) => (
+              <PreviewAttachment
+                key={filename}
+                attachment={{
+                  url: '',
+                  name: filename,
+                  contentType: '',
+                }}
+                isUploading={true}
+              />
+            ))}
+          </div>
         </div>
       )}
 

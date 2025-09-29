@@ -4,54 +4,6 @@ import OSS from 'ali-oss';
 
 import { auth } from '@/app/(auth)/auth';
 
-// 豆包视觉模型识别图片内容
-async function recognizeImageWithDoubao(imageUrl: string): Promise<string> {
-  const baseUrl = process.env.DOUBAO_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3';
-  const apiKey = process.env.DOUBAO_API_KEY || 'ade655b0-cce1-4d70-9863-89b03adac124';
-
-  try {
-    const response = await fetch(baseUrl + '/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: 'doubao-1.5-vision-pro-250328', // 使用支持视觉的模型
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: '请识别这张图片中的内容，包括文字、物体、场景等，尽可能详细地描述。'
-              },
-              {
-                type: 'image_url',
-                image_url: { url: imageUrl }
-              }
-            ]
-          }
-        ],
-        max_tokens: 2048,
-        temperature: 0.3,
-        stream: false
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('豆包视觉API错误:', errorText);
-      return '图片识别失败';
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '未能识别图片内容';
-  } catch (error) {
-    console.error('图片识别错误:', error);
-    return '图片识别失败';
-  }
-}
 
 // 文件验证规则
 const FileSchema = z.object({
@@ -147,21 +99,12 @@ export async function POST(request: Request) {
 
       console.log('文件上传成功:', result.url);
 
-      // 如果是图片文件，进行内容识别
-      let recognizedText = '';
-      if (file.type.startsWith('image/')) {
-        console.log('开始识别图片内容...');
-        recognizedText = await recognizeImageWithDoubao(result.url);
-        console.log('图片识别结果:', recognizedText);
-      }
-
       return NextResponse.json({
         url: result.url,
         name: originalFilename,
         pathname: filename,
         contentType: file.type,
         size: file.size,
-        recognizedText, // 添加识别的文本内容
       });
     } catch (error) {
       console.error('OSS 上传失败:', error);
